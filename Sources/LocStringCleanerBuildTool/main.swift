@@ -82,29 +82,31 @@ func main() {
     print("warning: projectpath \(projectRootPath)")
 
     print("warning: Found project at path: \(projectPath)")
-    //    let parentDirectoryPath = URL(fileURLWithPath: projectDire).deletingLastPathComponent().path
-    //    print("warning: search starting point(test): \(parentDirectoryPath)")
-    //
-    //    guard findProjectPath(inDirectory: parentDirectoryPath) != nil else {
-    //        print("Error: Could not find the project root path.")
-    //        exit(1)
-    //    }
-    //
-    //
-    //    // Find all Localizable.strings files in the project
-    //    let localizableStringsFiles = findLocalizableStringsFiles(inDirectory: currentDirectoryPath)
-    //
-    //    // Process each Localizable.strings file
-    //    for localizableStringsPath in localizableStringsFiles {
-    //        let keysWithLineNumbers = extractKeys(localizableStringFilePath: localizableStringsPath)
-    //        for (key, lineNumber) in keysWithLineNumbers {
-    //            print("warning: (test) searching key \(key)")
-    //            if !isKeyUsed(key, inDirectory: currentDirectoryPath) {
-    //                let warningMessage = "\(localizableStringsPath):\(lineNumber):1: warning: Unused localized string key '\(key)'"
-    //                print(warningMessage)
-    //            }
-    //        }
-    //    }
+    
+    
+    let parentDirectoryPath = URL(fileURLWithPath: projectPath).deletingLastPathComponent().path
+    print("warning: search starting point(test): \(parentDirectoryPath)")
+    
+    guard findProjectPath(inDirectory: parentDirectoryPath) != nil else {
+        print("Error: Could not find the project root path.")
+        exit(1)
+    }
+    
+    
+    // Find all Localizable.strings files in the project
+    let localizableStringsFiles = findLocalizableStringsFiles(inDirectory: projectRootPath)
+    
+    // Process each Localizable.strings file
+    for localizableStringsPath in localizableStringsFiles {
+        let keysWithLineNumbers = extractKeys(localizableStringFilePath: localizableStringsPath)
+        for (key, lineNumber) in keysWithLineNumbers {
+            print("warning: (test) searching key \(key)")
+            if !isKeyUsed(key, inDirectory: projectRootPath) {
+                let warningMessage = "\(localizableStringsPath):\(lineNumber):1: warning: Unused localized string key '\(key)'"
+                print(warningMessage)
+            }
+        }
+    }
 }
 
 main()
