@@ -1,13 +1,13 @@
 import Foundation
 import LocStringCleaner
 
-func findProjectPath(projectName: String, inDirectory directoryPath: String) -> String? {
+func findProjectPath(inDirectory directoryPath: String) -> String? {
     let fileManager = FileManager.default
-    guard let enumerator = fileManager.enumerator(atPath: directoryPath) else { return nil }
+    let enumerator = fileManager.enumerator(atPath: directoryPath)
     
-    while let filePath = enumerator.nextObject() as? String {
-        if filePath.contains("\(projectName).xcodeproj") || filePath.contains("\(projectName).xcworkspace") {
-            return directoryPath + "/" + filePath
+    while let filePath = enumerator?.nextObject() as? String {
+        if filePath.hasSuffix(".xcodeproj") || filePath.hasSuffix(".xcworkspace") {
+            return URL(fileURLWithPath: directoryPath).appendingPathComponent(filePath).path
         }
     }
     return nil
@@ -26,40 +26,85 @@ func findLocalizableStringsFiles(inDirectory directoryPath: String) -> [String] 
     return localizableStringsFiles
 }
 
-func main() {
-    // Locate the current directory path
-    let currentDirectoryPath = "/Users/kokiisshiki/github.com/private/localizeTest"
-    print("warning: search starting point(test): \(currentDirectoryPath)")
+func extractKeys(localizableStringFilePath: String) -> [(key: String, lineNumber: Int)] {
+    guard let content = try? String(contentsOfFile: localizableStringFilePath) else { return [] }
     
-    let parentDirectoryPath = URL(fileURLWithPath: currentDirectoryPath).deletingLastPathComponent().path
-    print("warning: search starting point(test): \(parentDirectoryPath)")
+    let lines = content.split(separator: "\n")
+    var keysWithLineNumbers: [(key: String, lineNumber: Int)] = []
+    
+    for (index, line) in lines.enumerated() {
+        if line.trimmingCharacters(in: .whitespaces).isEmpty { continue }
+        let components = line.components(separatedBy: " = ")
+        if let key = components.first {
+            keysWithLineNumbers.append((key: key.trimmingCharacters(in: .whitespaces), lineNumber: index + 1))            }
+    }
+    return keysWithLineNumbers
+}
 
-    // Find the .xcodeproj or .xcworkspace file and the project root path for "LocalizeTest"
-    guard findProjectPath(projectName: "localizeTest", inDirectory: parentDirectoryPath) != nil else {
-        print("Error: Could not find the project root path.")
+func isKeyUsed(_ key: String, inDirectory directoryPath: String) -> Bool {
+    let fileManager = FileManager.default
+    let enumerator = fileManager.enumerator(atPath: directoryPath)
+    
+    while let filePath = enumerator?.nextObject() as? String {
+        if filePath.hasSuffix(".swift") {
+            let swiftFilePath = URL(fileURLWithPath: directoryPath).appendingPathComponent(filePath).path
+            do {
+                let fileContent = try String(contentsOf: URL(fileURLWithPath: swiftFilePath), encoding: .utf8)
+                let contentByLines = fileContent.split(separator: "\n").map(String.init)
+                
+                if contentByLines.contains(where: { $0.contains("\(key)") }) {
+                    return true
+                }
+                
+            } catch {
+                print("Error: Could not read file content at path '\(swiftFilePath)'")
+            }
+        }
+    }
+    return false
+}
+
+
+func main() {
+    let projectRootPath: String
+    
+    if let srcRoot = ProcessInfo.processInfo.environment["SRCROOT"] {
+        projectRootPath = srcRoot
+    } else {
+        print("Error: Could not find the SRCROOT environment variable.")
         exit(1)
     }
     
-    
-    // Find all Localizable.strings files in the project
-    let localizableStringsFiles = findLocalizableStringsFiles(inDirectory: currentDirectoryPath)
-    print("warning: found localizableString(test): \(localizableStringsFiles)")
-    
-    // Process each Localizable.strings file
-    for localizableStringsPath in localizableStringsFiles {
-        // Add your logic to detect unused localized strings here
-        // For demonstration purposes, let's show a warning if a Localizable.strings file is found
-        let warningFilePath = localizableStringsPath
-        let warningLineNumber = 1 // Output the warning on the first line
-        let warningColumnNumber = 1 // Column number is set to 1 since we don't have the exact column number
-        let warningMessage = "Unused localized string detected"
-        
-        // Output the warning message in Xcode's expected format for the file
-        print("\(warningFilePath):\(warningLineNumber):\(warningColumnNumber): warning: \(warningMessage)")
-        
-        // Output a warning message for the navigation bar
-        print("warning: Localizable.strings file found at: \(localizableStringsPath)")
+    guard let projectPath = findProjectPath(inDirectory: projectRootPath) else {
+        print("Error: Could not find .xcodeproj or .xcworkspace file in the project root directory.")
+        exit(1)
     }
+    print("warning: projectpath \(projectRootPath)")
+
+    print("warning: Found project at path: \(projectPath)")
+    //    let parentDirectoryPath = URL(fileURLWithPath: projectDire).deletingLastPathComponent().path
+    //    print("warning: search starting point(test): \(parentDirectoryPath)")
+    //
+    //    guard findProjectPath(inDirectory: parentDirectoryPath) != nil else {
+    //        print("Error: Could not find the project root path.")
+    //        exit(1)
+    //    }
+    //
+    //
+    //    // Find all Localizable.strings files in the project
+    //    let localizableStringsFiles = findLocalizableStringsFiles(inDirectory: currentDirectoryPath)
+    //
+    //    // Process each Localizable.strings file
+    //    for localizableStringsPath in localizableStringsFiles {
+    //        let keysWithLineNumbers = extractKeys(localizableStringFilePath: localizableStringsPath)
+    //        for (key, lineNumber) in keysWithLineNumbers {
+    //            print("warning: (test) searching key \(key)")
+    //            if !isKeyUsed(key, inDirectory: currentDirectoryPath) {
+    //                let warningMessage = "\(localizableStringsPath):\(lineNumber):1: warning: Unused localized string key '\(key)'"
+    //                print(warningMessage)
+    //            }
+    //        }
+    //    }
 }
 
 main()
