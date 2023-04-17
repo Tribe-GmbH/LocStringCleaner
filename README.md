@@ -1,3 +1,5 @@
 # LocStringCleaner
+Detect and Remove unused localized strings from your swiftUI🍎 projects.
 
-A description of this package.
+## Usage
+Coming soon..
